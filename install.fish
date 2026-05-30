@@ -161,6 +161,37 @@ else
 end
 fish -c 'rm -f caelestia-meta-*.pkg.tar.zst' 2> /dev/null
 
+# Install caelestia-shell from GitHub (replaces AUR package)
+if ! command -v caelestia-shell &> /dev/null
+    log 'Installing caelestia-shell from GitHub...'
+
+    # Install build dependencies
+    sudo pacman -S --needed cmake clang qt6-base qt6-declarative $noconfirm
+    $aur_helper -S --needed quickshell $noconfirm
+
+    set -l shell_tmp /tmp/caelestia-shell-build
+
+    # Clean up if exists
+    rm -rf $shell_tmp
+
+    # Clone repo
+    git clone --depth 1 https://github.com/Aurora-Nasa-1/shell-CN.git $shell_tmp
+    cd $shell_tmp
+
+    # Build
+    cmake -B build -DCMAKE_INSTALL_PREFIX=/
+    cmake --build build
+
+    # Install
+    sudo cmake --install build
+    cd $install_dir
+
+    # Clean up
+    rm -rf $shell_tmp
+else
+    log 'caelestia-shell already installed, skipping...'
+end
+
 # Install hypr* configs
 if confirm-overwrite $config/hypr
     log 'Installing hypr* configs...'
