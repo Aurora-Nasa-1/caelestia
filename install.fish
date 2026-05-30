@@ -151,7 +151,7 @@ end
 # Cd into dir
 cd $install_dir || exit 1
 
-# Install metapackage for deps
+# Install metapackage for deps (includes caelestia-shell from AUR)
 log 'Installing metapackage...'
 
 if test $aur_helper = yay
@@ -161,36 +161,37 @@ else
 end
 fish -c 'rm -f caelestia-meta-*.pkg.tar.zst' 2> /dev/null
 
-# Install caelestia-shell from GitHub (replaces AUR package)
-if ! command -v caelestia-shell &> /dev/null
-    log 'Installing caelestia-shell from GitHub...'
+# Install caelestia-shell from AUR (for dependencies), then overwrite with GitHub build
+log 'Installing caelestia-shell from AUR (for dependencies)...'
+$aur_helper -S --needed caelestia-shell $noconfirm
 
-    # Install build dependencies
-    sudo pacman -S --needed cmake clang qt6-base qt6-declarative $noconfirm
-    $aur_helper -S --needed quickshell $noconfirm
+log 'Building caelestia-shell from GitHub source (overwrites AUR version)...'
 
-    set -l shell_tmp /tmp/caelestia-shell-build
+# Install build dependencies
+sudo pacman -S --needed cmake clang qt6-base qt6-declarative $noconfirm
 
-    # Clean up if exists
-    rm -rf $shell_tmp
+set -l shell_tmp /tmp/caelestia-shell-build
 
-    # Clone repo
-    git clone --depth 1 https://github.com/Aurora-Nasa-1/shell-CN.git $shell_tmp
-    cd $shell_tmp
+# Clean up if exists
+rm -rf $shell_tmp
 
-    # Build
-    cmake -B build -DCMAKE_INSTALL_PREFIX=/
-    cmake --build build
+# Clone repo
+git clone --depth 1 https://github.com/Aurora-Nasa-1/shell-CN.git $shell_tmp
+cd $shell_tmp
 
-    # Install
-    sudo cmake --install build
-    cd $install_dir
+# Get git revision for build
+set -l git_rev (git rev-parse HEAD 2>/dev/null; or echo 'unknown')
 
-    # Clean up
-    rm -rf $shell_tmp
-else
-    log 'caelestia-shell already installed, skipping...'
-end
+# Build
+cmake -B build -DVERSION="1.0.0" -DGIT_REVISION="$git_rev" -DCMAKE_INSTALL_PREFIX=/
+cmake --build build
+
+# Overwrite AUR-installed files with local build
+sudo cmake --install build --force
+cd $install_dir
+
+# Clean up
+rm -rf $shell_tmp
 
 # Install hypr* configs
 if confirm-overwrite $config/hypr
